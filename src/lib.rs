@@ -53,8 +53,8 @@ pub type OperandType = bindings::RabbitizerOperandType;
 
 impl bindings::RabbitizerOperandType {
     pub fn is_valid(self) -> bool {
-        self > bindings::RabbitizerOperandType::RABBITIZER_OPERAND_TYPE_INVALID
-            && self < bindings::RabbitizerOperandType::RABBITIZER_OPERAND_TYPE_MAX
+        self > bindings::RabbitizerOperandType::ALL_INVALID
+            && self < bindings::RabbitizerOperandType::ALL_MAX
     }
 }
 
@@ -63,11 +63,11 @@ pub type InstrId = bindings::RabbitizerInstrId;
 impl bindings::RabbitizerInstrId {
     pub fn get_opcode_name(self) -> Option<&'static str> {
         match self {
-            InstrId::RABBITIZER_INSTR_ID_cpu_INVALID
-            | InstrId::RABBITIZER_INSTR_ID_cpu_MAX
-            | InstrId::RABBITIZER_INSTR_ID_rsp_MAX
-            | InstrId::RABBITIZER_INSTR_ID_r5900_MAX => None,
-            v if v < InstrId::RABBITIZER_INSTR_ID_ALL_MAX => unsafe {
+            InstrId::cpu_INVALID
+            | InstrId::cpu_MAX
+            | InstrId::rsp_MAX
+            | InstrId::r5900_MAX => None,
+            v if v < InstrId::ALL_MAX => unsafe {
                 from_static_c_str(bindings::RabbitizerInstrId_getOpcodeName(self))
             },
             _ => None,
@@ -140,16 +140,8 @@ impl Instruction {
         unsafe { bindings::RabbitizerInstruction_getRaw(&self.instruction) }
     }
 
-    pub fn immediate(&self) -> u32 {
-        unsafe { bindings::RabbitizerInstruction_getImmediate(&self.instruction) }
-    }
-
     pub fn processed_immediate(&self) -> i32 {
         unsafe { bindings::RabbitizerInstruction_getProcessedImmediate(&self.instruction) }
-    }
-
-    pub fn instr_index(&self) -> u32 {
-        unsafe { bindings::RabbitizerInstruction_getInstrIndex(&self.instruction) }
     }
 
     pub fn instr_index_as_vram(&self) -> u32 {
@@ -370,14 +362,14 @@ impl Instruction {
                         break;
                     }
                     let kind = match operand {
-                        bindings::RabbitizerOperandType::RABBITIZER_OPERAND_TYPE_IMM => {
+                        bindings::RabbitizerOperandType::cpu_immediate => {
                             SimpleOperandType::Imm
                         }
-                        bindings::RabbitizerOperandType::RABBITIZER_OPERAND_TYPE_LABEL => {
+                        bindings::RabbitizerOperandType::cpu_label => {
                             SimpleOperandType::Label
                         }
-                        bindings::RabbitizerOperandType::RABBITIZER_OPERAND_TYPE_IMM_base
-                        | bindings::RabbitizerOperandType::RABBITIZER_OPERAND_TYPE_RSP_IMM_base => {
+                        bindings::RabbitizerOperandType::cpu_immediate_base
+                        | bindings::RabbitizerOperandType::rsp_immediate_base => {
                             SimpleOperandType::ImmBase
                         }
                         _ => SimpleOperandType::Other,
@@ -388,7 +380,7 @@ impl Instruction {
                             disassembled: {
                                 let mut dst = vec![0u8; 25];
                                 let cb = bindings::instrOpercandCallbacks.get_unchecked(
-                                    bindings::RabbitizerOperandType::RABBITIZER_OPERAND_TYPE_IMM
+                                    bindings::RabbitizerOperandType::cpu_immediate
                                         as usize,
                                 );
                                 let size = cb(
@@ -406,7 +398,7 @@ impl Instruction {
                             disassembled: {
                                 let mut dst = vec![0u8; 25];
                                 let cb = bindings::instrOpercandCallbacks.get_unchecked(
-                                    bindings::RabbitizerOperandType::RABBITIZER_OPERAND_TYPE_rs
+                                    bindings::RabbitizerOperandType::cpu_rs
                                         as usize,
                                 );
                                 let size = cb(
@@ -580,5 +572,11 @@ pub type Abi = bindings::RabbitizerAbi;
 pub fn config_set_register_fpr_abi_names(abi: Abi) {
     unsafe {
         bindings::RabbitizerConfig_Cfg.regNames.fprAbiNames = abi;
+    }
+}
+
+pub fn config_set_treat_j_as_unconditional_branch(on: bool) {
+    unsafe {
+        bindings::RabbitizerConfig_Cfg.toolchainTweaks.treatJAsUnconditionalBranch = on;
     }
 }
